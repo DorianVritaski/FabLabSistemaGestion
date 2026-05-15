@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  db-fablab:
+    image: postgres:15
+    container_name: db-fablab
+    environment:
+      POSTGRES_PASSWORD: fablab2026
+      POSTGRES_USER: postgres
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./backend
+    container_name: backend-fablab
+    environment:
+      DB_HOST: db-fablab
+      DB_USER: postgres
+      DB_PASSWORD: fablab2026
+      DB_NAME: postgres
+      DB_PORT: "5432"
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db-fablab
+    volumes:
+      - ./backend:/app
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: frontend-fablab
+    ports:
+      - "5173:5173"
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    command: npm run dev -- --host 0.0.0.0
+
+volumes:
+  pgdata:
