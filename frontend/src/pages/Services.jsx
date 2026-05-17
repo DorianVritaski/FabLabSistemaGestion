@@ -125,26 +125,36 @@ const Services = () => {
             </div>
           )}
 
-          {serviceTypes.length === 0 ? (
-            <div style={{ marginBottom: '1rem' }}>
-              <p>No hay tipos de servicios. Crea uno primero:</p>
-              <form onSubmit={handleCreateType} style={{ display: 'flex', gap: '0.5rem' }}>
-                <input type="text" className="input-field" placeholder="Ej. Impresión 3D" value={newType} onChange={e => setNewType(e.target.value)} required />
-                <button type="submit" className="btn btn-primary">Añadir</button>
-              </form>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit}>
-              <div className="input-group">
-                <label className="input-label">Tipo de Servicio</label>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <select name="service_type_id" className="input-field" value={formData.service_type_id} onChange={e => setFormData({...formData, service_type_id: e.target.value})} required>
-                    {serviceTypes.map(type => (
-                      <option key={type.id} value={type.id}>{type.name}</option>
-                    ))}
-                  </select>
-                </div>
+          <form onSubmit={handleSubmit}>
+            <div className="input-group">
+              <label className="input-label">Tipo de Servicio</label>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <select 
+                  name="service_type_id" 
+                  className="input-field" 
+                  style={{ flex: 1 }}
+                  value={formData.service_type_id} 
+                  onChange={e => setFormData({...formData, service_type_id: e.target.value})} 
+                  required={serviceTypes.length > 0}
+                >
+                  {serviceTypes.length === 0 && <option value="">No hay tipos registrados</option>}
+                  {serviceTypes.map(type => (
+                    <option key={type.id} value={type.id}>{type.name}</option>
+                  ))}
+                </select>
+                
+                {/* Miniformulario integrado para añadir tipos nuevos */}
+                <input 
+                  type="text" 
+                  className="input-field" 
+                  placeholder="Añadir nuevo tipo..." 
+                  style={{ width: '180px' }} 
+                  value={newType} 
+                  onChange={e => setNewType(e.target.value)} 
+                />
+                <button type="button" className="btn btn-accent" onClick={handleCreateType}>Añadir</button>
               </div>
+            </div>
               
               <div className="grid-cols-2">
                 <div className="input-group">
@@ -181,8 +191,7 @@ const Services = () => {
               <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>
                 Registrar Servicio
               </button>
-            </form>
-          )}
+          </form>
         </div>
 
         {/* Historial de Servicios */}

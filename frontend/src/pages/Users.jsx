@@ -157,7 +157,32 @@ const Users = () => {
             {formData.user_type === 'estudiante' && (
               <div className="input-group">
                 <label className="input-label">Carrera Profesional</label>
-                <input type="text" name="career" className="input-field" value={formData.career} onChange={handleInputChange} required />
+                <select name="career" className="input-field" value={formData.career} onChange={handleInputChange} required>
+                  <option value="" disabled>Seleccione una carrera...</option>
+                  <option value="Arquitectura">Arquitectura</option>
+                  <option value="Ingeniería Civil">Ingeniería Civil</option>
+                  <option value="Ingeniería de Sistemas">Ingeniería de Sistemas</option>
+                  <option value="Ingeniería Mecánica">Ingeniería Mecánica</option>
+                  <option value="Ingeniería Eléctrica y Electrónica">Ingeniería Eléctrica y Electrónica</option>
+                  <option value="Ingeniería Metalúrgica y de Materiales">Ingeniería Metalúrgica y de Materiales</option>
+                  <option value="Ingeniería Química">Ingeniería Química</option>
+                  <option value="Ingeniería de Minas">Ingeniería de Minas</option>
+                  <option value="Ingeniería Forestal y Ambiental">Ingeniería Forestal y Ambiental</option>
+                  <option value="Ingeniería en Industrias Alimentarias">Ingeniería en Industrias Alimentarias</option>
+                  <option value="Agronomía">Agronomía</option>
+                  <option value="Zootecnia">Zootecnia</option>
+                  <option value="Administración de Empresas">Administración de Empresas</option>
+                  <option value="Contabilidad">Contabilidad</option>
+                  <option value="Economía">Economía</option>
+                  <option value="Trabajo Social">Trabajo Social</option>
+                  <option value="Sociología">Sociología</option>
+                  <option value="Antropología">Antropología</option>
+                  <option value="Ciencias de la Comunicación">Ciencias de la Comunicación</option>
+                  <option value="Enfermería">Enfermería</option>
+                  <option value="Medicina Humana">Medicina Humana</option>
+                  <option value="Educación">Educación</option>
+                  <option value="Otra">Otra</option>
+                </select>
               </div>
             )}
             <div className="input-group">
