@@ -62,8 +62,37 @@ def create_service_request(request: schemas.ServiceRequestCreate, db: Session = 
     return new_request
 
 @router.get("/requests", response_model=List[schemas.ServiceRequest])
-def read_service_requests(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_admin: models.AdminUser = Depends(auth.get_current_user)):
-    return db.query(models.ServiceRequest).offset(skip).limit(limit).all()
+def read_service_requests(skip: int = 0, limit: int = 1000, db: Session = Depends(get_db), current_admin: models.AdminUser = Depends(auth.get_current_user)):
+    return db.query(models.ServiceRequest).order_by(models.ServiceRequest.id.desc()).offset(skip).limit(limit).all()
+
+@router.put("/requests/{request_id}", response_model=schemas.ServiceRequest)
+def update_service_request(request_id: int, request: schemas.ServiceRequestCreate, db: Session = Depends(get_db), current_admin: models.AdminUser = Depends(auth.get_current_user)):
+    db_request = db.query(models.ServiceRequest).filter(models.ServiceRequest.id == request_id).first()
+    if not db_request:
+        raise HTTPException(status_code=404, detail="Solicitud no encontrada")
+
+    # Fetch users
+    users = db.query(models.LabUser).filter(models.LabUser.id.in_(request.lab_user_ids)).all()
+    if len(users) != len(request.lab_user_ids):
+        raise HTTPException(status_code=404, detail="Uno o más usuarios no fueron encontrados")
+    if len(users) > 8:
+        raise HTTPException(status_code=400, detail="Máximo 8 integrantes por solicitud")
+
+    # Update basic fields
+    db_request.service_type_id = request.service_type_id
+    db_request.start_date = request.start_date
+    db_request.end_date = request.end_date
+    db_request.status = request.status
+    db_request.details = request.details
+
+    # Update users
+    db_request.users.clear()
+    for user in users:
+        db_request.users.append(user)
+
+    db.commit()
+    db.refresh(db_request)
+    return db_request
 
 @router.get("/requests/{request_id}/pdf")
 def generate_sworn_statement_pdf(request_id: int, db: Session = Depends(get_db)):

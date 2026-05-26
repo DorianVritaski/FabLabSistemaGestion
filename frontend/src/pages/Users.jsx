@@ -78,7 +78,7 @@ const Users = () => {
       last_name: user.last_name,
       dni: user.dni || '',
       phone_number: user.phone_number || '',
-      user_type: user.user_type,
+      user_type: user.user_type ? user.user_type.toLowerCase().trim() : 'estudiante',
       career: user.career || '',
       institutional_email: user.institutional_email
     });
@@ -221,10 +221,11 @@ const Users = () => {
           ) : filteredUsers.length === 0 ? (
             <p style={{ color: 'var(--color-text-muted)' }}>No se encontraron usuarios.</p>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
+            <div style={{ overflowX: 'auto', maxHeight: '500px', overflowY: 'auto', border: '1px solid var(--color-surface-hover)', borderRadius: 'var(--radius-md)' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
-                <thead>
+                <thead style={{ position: 'sticky', top: 0, backgroundColor: 'var(--color-surface)', zIndex: 1, boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
                   <tr style={{ borderBottom: '2px solid var(--color-surface-hover)' }}>
+                    <th style={{ padding: '0.75rem' }}>ID</th>
                     <th style={{ padding: '0.75rem' }}>Nombre</th>
                     <th style={{ padding: '0.75rem' }}>DNI</th>
                     <th style={{ padding: '0.75rem' }}>Celular</th>
@@ -236,6 +237,7 @@ const Users = () => {
                 <tbody>
                   {filteredUsers.map((user) => (
                     <tr key={user.id} style={{ borderBottom: '1px solid var(--color-surface-hover)' }}>
+                      <td style={{ padding: '0.75rem', fontWeight: 'bold', color: 'var(--color-primary)' }}>#{user.id}</td>
                       <td style={{ padding: '0.75rem' }}>
                         {user.first_name} {user.last_name}<br/>
                         <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{user.institutional_email}</span>

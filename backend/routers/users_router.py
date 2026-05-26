@@ -19,8 +19,8 @@ def create_lab_user(user: schemas.LabUserCreate, db: Session = Depends(get_db), 
     return new_user
 
 @router.get("/", response_model=List[schemas.LabUser])
-def read_lab_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_admin: models.AdminUser = Depends(auth.get_current_user)):
-    users = db.query(models.LabUser).offset(skip).limit(limit).all()
+def read_lab_users(skip: int = 0, limit: int = 10000, db: Session = Depends(get_db), current_admin: models.AdminUser = Depends(auth.get_current_user)):
+    users = db.query(models.LabUser).order_by(models.LabUser.id.desc()).offset(skip).limit(limit).all()
     return users
 
 @router.get("/{user_id}", response_model=schemas.LabUser)

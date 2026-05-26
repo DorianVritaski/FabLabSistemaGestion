@@ -9,14 +9,17 @@ const Services = () => {
 
   // Formularios
   const [newType, setNewType] = useState('');
+  const [userSearchTerm, setUserSearchTerm] = useState('');
   
   const [formData, setFormData] = useState({
     service_type_id: '',
     start_date: '',
     end_date: '',
     details: '',
+    status: 'pending',
     selectedUsers: [] // IDs de los usuarios seleccionados
   });
+  const [editingServiceId, setEditingServiceId] = useState(null);
   const [formMessage, setFormMessage] = useState({ type: '', text: '' });
 
   const fetchData = async () => {
@@ -70,6 +73,32 @@ const Services = () => {
     });
   };
 
+  const handleEditService = (service) => {
+    setEditingServiceId(service.id);
+    setFormData({
+      service_type_id: service.service_type_id,
+      start_date: service.start_date,
+      end_date: service.end_date || '',
+      details: service.details || '',
+      status: service.status || 'pending',
+      selectedUsers: service.users ? service.users.map(u => u.id) : []
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const resetForm = () => {
+    setEditingServiceId(null);
+    setFormData({
+      service_type_id: serviceTypes.length > 0 ? serviceTypes[0].id : '',
+      start_date: '',
+      end_date: '',
+      details: '',
+      status: 'pending',
+      selectedUsers: []
+    });
+    setFormMessage({ type: '', text: '' });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setFormMessage({ type: '', text: '' });
@@ -80,18 +109,27 @@ const Services = () => {
     }
 
     try {
-      await api.post('/services/requests', {
+      const payload = {
         service_type_id: parseInt(formData.service_type_id),
         start_date: formData.start_date,
         end_date: formData.end_date || null,
         details: formData.details,
+        status: formData.status,
         lab_user_ids: formData.selectedUsers
-      });
-      setFormMessage({ type: 'success', text: 'Servicio registrado exitosamente' });
-      setFormData({ ...formData, details: '', selectedUsers: [] });
+      };
+
+      if (editingServiceId) {
+        await api.put(`/services/requests/${editingServiceId}`, payload);
+        setFormMessage({ type: 'success', text: 'Servicio actualizado exitosamente' });
+      } else {
+        await api.post('/services/requests', payload);
+        setFormMessage({ type: 'success', text: 'Servicio registrado exitosamente' });
+      }
+      
       fetchData();
+      setTimeout(resetForm, 1500); // Reset form after showing success message briefly
     } catch (error) {
-      setFormMessage({ type: 'error', text: error.response?.data?.detail || 'Error al registrar servicio' });
+      setFormMessage({ type: 'error', text: error.response?.data?.detail || 'Error al guardar servicio' });
     }
   };
 
@@ -109,6 +147,13 @@ const Services = () => {
     }
   };
 
+  const filteredUsersForService = users.filter(user => {
+    const searchLower = userSearchTerm.toLowerCase();
+    const fullName = `${user.first_name} ${user.last_name}`.toLowerCase();
+    const dni = user.dni ? user.dni.toLowerCase() : '';
+    return fullName.includes(searchLower) || dni.includes(searchLower);
+  });
+
   return (
     <div>
       <h1 className="mb-4" style={{ color: 'var(--color-primary)' }}>Coordinación de Servicios</h1>
@@ -117,7 +162,7 @@ const Services = () => {
         
         {/* Formulario de Solicitud */}
         <div className="card">
-          <h2 className="mb-4">Registrar Nuevo Servicio</h2>
+          <h2 className="mb-4">{editingServiceId ? 'Editar Servicio' : 'Registrar Nuevo Servicio'}</h2>
           
           {formMessage.text && (
             <div style={{ padding: '0.75rem', marginBottom: '1rem', borderRadius: 'var(--radius-sm)', backgroundColor: formMessage.type === 'success' ? '#e8f5e9' : '#ffebee', color: formMessage.type === 'success' ? '#2e7d32' : '#c62828' }}>
@@ -169,15 +214,23 @@ const Services = () => {
 
               <div className="input-group">
                 <label className="input-label">Seleccionar Usuarios (Máx 8)</label>
+                <input 
+                  type="text" 
+                  className="input-field" 
+                  placeholder="🔍 Buscar estudiante por nombre o DNI..." 
+                  value={userSearchTerm}
+                  onChange={(e) => setUserSearchTerm(e.target.value)}
+                  style={{ marginBottom: '0.5rem', padding: '0.4rem 0.75rem', fontSize: '0.875rem' }}
+                />
                 <div style={{ maxHeight: '150px', overflowY: 'auto', border: '1px solid #ced4da', borderRadius: 'var(--radius-md)', padding: '0.5rem' }}>
-                  {users.length === 0 ? <p style={{ fontSize: '0.875rem' }}>No hay usuarios registrados</p> : users.map(user => (
+                  {filteredUsersForService.length === 0 ? <p style={{ fontSize: '0.875rem' }}>No hay usuarios encontrados</p> : filteredUsersForService.map(user => (
                     <label key={user.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0', cursor: 'pointer' }}>
                       <input 
                         type="checkbox" 
                         checked={formData.selectedUsers.includes(user.id)}
                         onChange={() => handleUserSelection(user.id)}
                       />
-                      <span style={{ fontSize: '0.875rem' }}>{user.first_name} {user.last_name} ({user.institutional_email})</span>
+                      <span style={{ fontSize: '0.875rem' }}><strong style={{ color: 'var(--color-primary)' }}>#{user.id}</strong> {user.first_name} {user.last_name} ({user.institutional_email})</span>
                     </label>
                   ))}
                 </div>
@@ -188,9 +241,28 @@ const Services = () => {
                 <textarea className="input-field" rows="3" value={formData.details} onChange={e => setFormData({...formData, details: e.target.value})} placeholder="Ej. Filamento PLA color verde..."></textarea>
               </div>
 
-              <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>
-                Registrar Servicio
-              </button>
+              {editingServiceId && (
+                <div className="input-group">
+                  <label className="input-label">Estado del Servicio</label>
+                  <select className="input-field" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})}>
+                    <option value="pending">Pendiente</option>
+                    <option value="in_progress">En Progreso</option>
+                    <option value="completed">Finalizado</option>
+                    <option value="cancelled">Cancelado</option>
+                  </select>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>
+                  {editingServiceId ? 'Actualizar Servicio' : 'Registrar Servicio'}
+                </button>
+                {editingServiceId && (
+                  <button type="button" className="btn btn-accent" onClick={resetForm} style={{ flex: 1 }}>
+                    Cancelar
+                  </button>
+                )}
+              </div>
           </form>
         </div>
 
@@ -217,9 +289,14 @@ const Services = () => {
                   <p style={{ fontSize: '0.875rem', margin: '0 0 0.5rem 0' }}>
                     <strong>Integrantes ({service.users.length}):</strong> {service.users.map(u => u.first_name).join(', ')}
                   </p>
-                  <button onClick={() => downloadPDF(service.id)} className="btn btn-accent" style={{ width: '100%', fontSize: '0.875rem', padding: '0.4rem' }}>
-                    Descargar Declaración Jurada
-                  </button>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button onClick={() => downloadPDF(service.id)} className="btn btn-accent" style={{ flex: 1, fontSize: '0.875rem', padding: '0.4rem' }}>
+                      📄 Declaración Jurada
+                    </button>
+                    <button onClick={() => handleEditService(service)} className="btn btn-outline" style={{ flex: 1, fontSize: '0.875rem', padding: '0.4rem' }}>
+                      ✏️ Editar
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
