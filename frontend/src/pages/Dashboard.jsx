@@ -9,14 +9,16 @@ const Dashboard = () => {
   });
   const [loading, setLoading] = useState(true);
   const [predictions, setPredictions] = useState([]);
+  const [serviceProjections, setServiceProjections] = useState([]);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const [servicesRes, usersRes, mlRes] = await Promise.all([
+        const [servicesRes, usersRes, mlRes, projRes] = await Promise.all([
           api.get('/services/requests'),
           api.get('/lab-users/'),
-          api.get('/ml/predict-demand')
+          api.get('/ml/predict-demand'),
+          api.get('/ml/service-projections')
         ]);
         
         const activeCount = servicesRes.data.filter(s => s.status === 'pending' || s.status === 'in_progress').length;
@@ -28,6 +30,7 @@ const Dashboard = () => {
         });
         
         setPredictions(mlRes.data.predictions.slice(0, 7)); // Primeros 7 días para el gráfico
+        setServiceProjections(projRes.data);
       } catch (error) {
         console.error("Error fetching dashboard data", error);
       } finally {
@@ -78,8 +81,39 @@ const Dashboard = () => {
               ))}
             </div>
             <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginTop: '1rem', fontStyle: 'italic' }}>
-              * Los datos actualmente se generan mediante un mock histórico ajustado al modelo Prophet para demostración.
+              * Los datos predictivos se generan utilizando los datos históricos desde la tabla de base de datos conectada.
             </p>
+          </div>
+
+          {/* Tabla de Proyecciones por Servicio */}
+          <div className="card mt-4">
+            <h3 className="mb-4">Proyección de Servicios</h3>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
+                <thead style={{ backgroundColor: 'var(--color-surface-hover)', color: 'var(--color-text-muted)' }}>
+                  <tr>
+                    <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--color-surface-hover)' }}>SERVICIO</th>
+                    <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--color-surface-hover)', textAlign: 'center' }}>SOLICITUDES (mes anterior)</th>
+                    <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--color-surface-hover)', textAlign: 'center' }}>PROYECCIÓN (mes siguiente)</th>
+                    <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--color-surface-hover)', textAlign: 'center' }}>TENDENCIA</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {serviceProjections.map((proj, index) => (
+                    <tr key={index} style={{ borderBottom: '1px solid var(--color-surface-hover)' }}>
+                      <td style={{ padding: '0.75rem', fontWeight: 'bold', color: 'var(--color-primary)' }}>{proj.service_name}</td>
+                      <td style={{ padding: '0.75rem', textAlign: 'center' }}>{proj.last_month_requests}</td>
+                      <td style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 'bold' }}>{proj.projected_next_month}</td>
+                      <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                        {proj.trend === 'up' && <span style={{ color: '#2e7d32', fontWeight: 'bold' }}>↑ Alza</span>}
+                        {proj.trend === 'down' && <span style={{ color: '#c62828', fontWeight: 'bold' }}>↓ Baja</span>}
+                        {proj.trend === 'stable' && <span style={{ color: 'var(--color-text-muted)', fontWeight: 'bold' }}>→ Estable</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </>
       )}

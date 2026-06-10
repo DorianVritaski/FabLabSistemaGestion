@@ -6,6 +6,15 @@ const Users = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [typeFilter, setTypeFilter] = useState('all');
+  
+  // Paginación
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, typeFilter]);
   
   // Form state
   const [editingUserId, setEditingUserId] = useState(null);
@@ -102,8 +111,15 @@ const Users = () => {
     const searchLower = searchTerm.toLowerCase();
     const fullName = `${user.first_name} ${user.last_name}`.toLowerCase();
     const dni = user.dni ? user.dni.toLowerCase() : '';
-    return fullName.includes(searchLower) || dni.includes(searchLower);
+    const matchesSearch = fullName.includes(searchLower) || dni.includes(searchLower);
+    
+    const matchesType = typeFilter === 'all' || user.user_type === typeFilter;
+    
+    return matchesSearch && matchesType;
   });
+
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+  const paginatedUsers = filteredUsers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   return (
     <div>
@@ -204,16 +220,30 @@ const Users = () => {
 
         {/* Lista de Usuarios */}
         <div className="card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h2 style={{ margin: 0 }}>Usuarios Registrados</h2>
-            <input 
-              type="text" 
-              placeholder="🔍 Buscar por Nombre o DNI..." 
-              className="input-field"
-              style={{ width: '250px' }}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', gap: '1rem' }}>
+            <h2 style={{ margin: 0, whiteSpace: 'nowrap' }}>Usuarios Registrados</h2>
+            <div style={{ display: 'flex', gap: '0.5rem', flex: 1, justifyContent: 'flex-end' }}>
+              <input 
+                type="text" 
+                placeholder="🔍 Buscar por Nombre o DNI..." 
+                className="input-field"
+                style={{ maxWidth: '250px' }}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              <select 
+                className="input-field" 
+                style={{ maxWidth: '180px' }}
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+              >
+                <option value="all">Todos los Tipos</option>
+                <option value="estudiante">Estudiante</option>
+                <option value="docente">Docente</option>
+                <option value="administrativo">Administrativo</option>
+                <option value="externo">Externo</option>
+              </select>
+            </div>
           </div>
           
           {loading ? (
@@ -235,7 +265,7 @@ const Users = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredUsers.map((user) => (
+                  {paginatedUsers.map((user) => (
                     <tr key={user.id} style={{ borderBottom: '1px solid var(--color-surface-hover)' }}>
                       <td style={{ padding: '0.75rem', fontWeight: 'bold', color: 'var(--color-primary)' }}>#{user.id}</td>
                       <td style={{ padding: '0.75rem' }}>
@@ -260,6 +290,31 @@ const Users = () => {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+          
+          {/* Controles de Paginación */}
+          {!loading && filteredUsers.length > 0 && totalPages > 1 && (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', marginTop: '1rem' }}>
+              <button 
+                className="btn btn-outline" 
+                disabled={currentPage === 1} 
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                style={{ padding: '0.4rem 0.75rem', fontSize: '0.875rem' }}
+              >
+                Anterior
+              </button>
+              <span style={{ fontSize: '0.875rem', fontWeight: 'bold', color: 'var(--color-text-muted)' }}>
+                Página {currentPage} de {totalPages}
+              </span>
+              <button 
+                className="btn btn-outline" 
+                disabled={currentPage === totalPages} 
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                style={{ padding: '0.4rem 0.75rem', fontSize: '0.875rem' }}
+              >
+                Siguiente
+              </button>
             </div>
           )}
         </div>

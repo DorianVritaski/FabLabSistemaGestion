@@ -10,6 +10,17 @@ const Services = () => {
   // Formularios
   const [newType, setNewType] = useState('');
   const [userSearchTerm, setUserSearchTerm] = useState('');
+  const [serviceSearchTerm, setServiceSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [typeFilter, setTypeFilter] = useState('all');
+  
+  // Paginación
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [serviceSearchTerm, statusFilter, typeFilter]);
   
   const [formData, setFormData] = useState({
     service_type_id: '',
@@ -154,6 +165,22 @@ const Services = () => {
     return fullName.includes(searchLower) || dni.includes(searchLower);
   });
 
+  const filteredServices = services.filter(service => {
+    const searchLower = serviceSearchTerm.toLowerCase();
+    const typeMatch = service.service_type.name.toLowerCase().includes(searchLower);
+    const userMatch = service.users.some(u => 
+      `${u.first_name} ${u.last_name}`.toLowerCase().includes(searchLower) || 
+      (u.dni && u.dni.toLowerCase().includes(searchLower))
+    );
+    const matchesSearch = typeMatch || userMatch;
+    const matchesStatus = statusFilter === 'all' || service.status === statusFilter;
+    const matchesTypeFilter = typeFilter === 'all' || service.service_type_id.toString() === typeFilter;
+    return matchesSearch && matchesStatus && matchesTypeFilter;
+  });
+
+  const totalPages = Math.ceil(filteredServices.length / itemsPerPage);
+  const paginatedServices = filteredServices.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
   return (
     <div>
       <h1 className="mb-4" style={{ color: 'var(--color-primary)' }}>Coordinación de Servicios</h1>
@@ -269,37 +296,99 @@ const Services = () => {
         {/* Historial de Servicios */}
         <div className="card">
           <h2 className="mb-4">Historial de Solicitudes</h2>
+
+          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+            <input 
+              type="text" 
+              className="input-field" 
+              placeholder="🔍 Buscar por integrante, servicio..." 
+              value={serviceSearchTerm}
+              onChange={(e) => setServiceSearchTerm(e.target.value)}
+              style={{ flex: 2, padding: '0.4rem 0.75rem', fontSize: '0.875rem' }}
+            />
+            <select
+              className="input-field"
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+              style={{ flex: 1, padding: '0.4rem 0.75rem', fontSize: '0.875rem' }}
+            >
+              <option value="all">Todos los Tipos</option>
+              {serviceTypes.map(type => (
+                <option key={type.id} value={type.id}>{type.name}</option>
+              ))}
+            </select>
+            <select 
+              className="input-field" 
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              style={{ flex: 1, padding: '0.4rem 0.75rem', fontSize: '0.875rem' }}
+            >
+              <option value="all">Todos los Estados</option>
+              <option value="pending">Pendiente</option>
+              <option value="in_progress">En Progreso</option>
+              <option value="completed">Finalizado</option>
+              <option value="cancelled">Cancelado</option>
+            </select>
+          </div>
+
           {loading ? (
             <p>Cargando servicios...</p>
-          ) : services.length === 0 ? (
-            <p style={{ color: 'var(--color-text-muted)' }}>No hay solicitudes registradas.</p>
+          ) : filteredServices.length === 0 ? (
+            <p style={{ color: 'var(--color-text-muted)' }}>No hay solicitudes que coincidan con la búsqueda.</p>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {services.map(service => (
-                <div key={service.id} style={{ border: '1px solid var(--color-surface-hover)', borderRadius: 'var(--radius-md)', padding: '1rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-                    <h3 style={{ margin: 0, color: 'var(--color-primary)' }}>{service.service_type.name}</h3>
-                    <span style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-text-main)', padding: '0.25rem 0.5rem', borderRadius: 'var(--radius-full)', fontSize: '0.75rem', fontWeight: 'bold' }}>
-                      {service.status.toUpperCase()}
-                    </span>
+            <>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '600px', overflowY: 'auto', paddingRight: '0.5rem' }}>
+                {paginatedServices.map(service => (
+                  <div key={service.id} style={{ border: '1px solid var(--color-surface-hover)', borderRadius: 'var(--radius-md)', padding: '1rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                      <h3 style={{ margin: 0, color: 'var(--color-primary)' }}>{service.service_type.name}</h3>
+                      <span style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-text-main)', padding: '0.25rem 0.5rem', borderRadius: 'var(--radius-full)', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                        {service.status.toUpperCase()}
+                      </span>
+                    </div>
+                    <p style={{ fontSize: '0.875rem', margin: '0 0 0.5rem 0' }}>
+                      <strong>Fechas:</strong> {service.start_date} al {service.end_date || 'Pendiente'}
+                    </p>
+                    <p style={{ fontSize: '0.875rem', margin: '0 0 0.5rem 0' }}>
+                      <strong>Integrantes ({service.users.length}):</strong> {service.users.map(u => u.first_name).join(', ')}
+                    </p>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button onClick={() => downloadPDF(service.id)} className="btn btn-accent" style={{ flex: 1, fontSize: '0.875rem', padding: '0.4rem' }}>
+                        📄 Declaración Jurada
+                      </button>
+                      <button onClick={() => handleEditService(service)} className="btn btn-outline" style={{ flex: 1, fontSize: '0.875rem', padding: '0.4rem' }}>
+                        ✏️ Editar
+                      </button>
+                    </div>
                   </div>
-                  <p style={{ fontSize: '0.875rem', margin: '0 0 0.5rem 0' }}>
-                    <strong>Fechas:</strong> {service.start_date} al {service.end_date || 'Pendiente'}
-                  </p>
-                  <p style={{ fontSize: '0.875rem', margin: '0 0 0.5rem 0' }}>
-                    <strong>Integrantes ({service.users.length}):</strong> {service.users.map(u => u.first_name).join(', ')}
-                  </p>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button onClick={() => downloadPDF(service.id)} className="btn btn-accent" style={{ flex: 1, fontSize: '0.875rem', padding: '0.4rem' }}>
-                      📄 Declaración Jurada
-                    </button>
-                    <button onClick={() => handleEditService(service)} className="btn btn-outline" style={{ flex: 1, fontSize: '0.875rem', padding: '0.4rem' }}>
-                      ✏️ Editar
-                    </button>
-                  </div>
+                ))}
+              </div>
+
+              {/* Controles de Paginación */}
+              {totalPages > 1 && (
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', marginTop: '1rem' }}>
+                  <button 
+                    className="btn btn-outline" 
+                    disabled={currentPage === 1} 
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    style={{ padding: '0.4rem 0.75rem', fontSize: '0.875rem' }}
+                  >
+                    Anterior
+                  </button>
+                  <span style={{ fontSize: '0.875rem', fontWeight: 'bold', color: 'var(--color-text-muted)' }}>
+                    Página {currentPage} de {totalPages}
+                  </span>
+                  <button 
+                    className="btn btn-outline" 
+                    disabled={currentPage === totalPages} 
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    style={{ padding: '0.4rem 0.75rem', fontSize: '0.875rem' }}
+                  >
+                    Siguiente
+                  </button>
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           )}
         </div>
 

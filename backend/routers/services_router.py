@@ -62,7 +62,7 @@ def create_service_request(request: schemas.ServiceRequestCreate, db: Session = 
     return new_request
 
 @router.get("/requests", response_model=List[schemas.ServiceRequest])
-def read_service_requests(skip: int = 0, limit: int = 1000, db: Session = Depends(get_db), current_admin: models.AdminUser = Depends(auth.get_current_user)):
+def read_service_requests(skip: int = 0, limit: int = 10000, db: Session = Depends(get_db), current_admin: models.AdminUser = Depends(auth.get_current_user)):
     return db.query(models.ServiceRequest).order_by(models.ServiceRequest.id.desc()).offset(skip).limit(limit).all()
 
 @router.put("/requests/{request_id}", response_model=schemas.ServiceRequest)
