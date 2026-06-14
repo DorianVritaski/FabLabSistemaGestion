@@ -10,18 +10,29 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [predictions, setPredictions] = useState([]);
   const [serviceProjections, setServiceProjections] = useState([]);
+  
+  // Alertas
+  const [alerts, setAlerts] = useState({
+    machines: [],
+    inventory: []
+  });
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const [servicesRes, usersRes, mlRes, projRes] = await Promise.all([
+        const [servicesRes, usersRes, mlRes, projRes, machinesRes, inventoryRes] = await Promise.all([
           api.get('/services/requests'),
           api.get('/lab-users/'),
           api.get('/ml/predict-demand'),
-          api.get('/ml/service-projections')
+          api.get('/ml/service-projections'),
+          api.get('/machines'),
+          api.get('/inventory')
         ]);
         
         const activeCount = servicesRes.data.filter(s => s.status === 'pending' || s.status === 'in_progress').length;
+        
+        const machinesNeedingMaintenance = machinesRes.data.filter(m => m.accumulated_hours >= m.maintenance_limit_hours);
+        const inventoryLowStock = inventoryRes.data.filter(i => i.current_stock <= i.minimum_stock);
         
         setStats({
           activeServices: activeCount,
@@ -31,6 +42,11 @@ const Dashboard = () => {
         
         setPredictions(mlRes.data.predictions.slice(0, 7)); // Primeros 7 días para el gráfico
         setServiceProjections(projRes.data);
+        
+        setAlerts({
+          machines: machinesNeedingMaintenance,
+          inventory: inventoryLowStock
+        });
       } catch (error) {
         console.error("Error fetching dashboard data", error);
       } finally {
@@ -49,6 +65,24 @@ const Dashboard = () => {
         <p>Cargando información del sistema...</p>
       ) : (
         <>
+          {(alerts.machines.length > 0 || alerts.inventory.length > 0) && (
+            <div className="card mb-4" style={{ backgroundColor: '#fff3e0', border: '1px solid #ff9800' }}>
+              <h3 style={{ color: '#e65100', marginBottom: '1rem' }}>⚠️ Alertas del Sistema</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {alerts.machines.map(m => (
+                  <div key={`m-${m.id}`} style={{ padding: '0.5rem', backgroundColor: '#fff', borderRadius: 'var(--radius-sm)', borderLeft: '4px solid #c62828' }}>
+                    <strong>Máquina requiere mantenimiento:</strong> {m.name} ({m.accumulated_hours}/{m.maintenance_limit_hours} hrs)
+                  </div>
+                ))}
+                {alerts.inventory.map(i => (
+                  <div key={`i-${i.id}`} style={{ padding: '0.5rem', backgroundColor: '#fff', borderRadius: 'var(--radius-sm)', borderLeft: '4px solid #e65100' }}>
+                    <strong>Stock Bajo:</strong> {i.name} ({i.current_stock} {i.unit} - Mínimo: {i.minimum_stock})
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="grid-cols-3">
             <div className="card">
               <h3 style={{ color: 'var(--color-text-muted)' }}>Servicios Activos</h3>

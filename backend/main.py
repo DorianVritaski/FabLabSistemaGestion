@@ -20,9 +20,11 @@ app.add_middleware(
 def read_root():
     return {"message": "Bienvenido a la API del Fab Lab UNCP"}
 
-from routers import auth_router, users_router, services_router, ml_router
+from routers import auth_router, users_router, services_router, ml_router, machines_router, inventory_router
 
 app.include_router(auth_router.router)
 app.include_router(users_router.router)
 app.include_router(services_router.router)
 app.include_router(ml_router.router)
+app.include_router(machines_router.router)
+app.include_router(inventory_router.router)

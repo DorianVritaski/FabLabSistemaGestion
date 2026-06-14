@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime, Date, Text, Table
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime, Date, Text, Table, Float
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
@@ -60,3 +60,94 @@ class ServiceRequest(Base):
     service_type = relationship("ServiceType", back_populates="requests")
     admin = relationship("AdminUser")
     users = relationship("LabUser", secondary=service_request_lab_user, back_populates="service_requests")
+
+# --- Machine Management Models ---
+
+class Machine(Base):
+    __tablename__ = "machines"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False)
+    type = Column(String(50), nullable=False) # 3D Printer, Laser, Milling, etc.
+    status = Column(String(50), default="active") # active, maintenance, out_of_order
+    accumulated_hours = Column(Float, default=0.0)
+    maintenance_limit_hours = Column(Float, default=100.0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    usages = relationship("MachineUsage", back_populates="machine", cascade="all, delete-orphan")
+    incidents = relationship("MachineIncident", back_populates="machine", cascade="all, delete-orphan")
+    maintenances = relationship("MachineMaintenance", back_populates="machine", cascade="all, delete-orphan")
+
+class MachineUsage(Base):
+    __tablename__ = "machine_usages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    machine_id = Column(Integer, ForeignKey("machines.id"), nullable=False)
+    hours_used = Column(Float, nullable=False)
+    date = Column(Date, default=datetime.utcnow)
+    description = Column(Text, nullable=True)
+
+    machine = relationship("Machine", back_populates="usages")
+
+class MachineIncident(Base):
+    __tablename__ = "machine_incidents"
+
+    id = Column(Integer, primary_key=True, index=True)
+    machine_id = Column(Integer, ForeignKey("machines.id"), nullable=False)
+    description = Column(Text, nullable=False)
+    date = Column(Date, default=datetime.utcnow)
+    status = Column(String(50), default="open") # open, resolved
+
+    machine = relationship("Machine", back_populates="incidents")
+
+class MachineMaintenance(Base):
+    __tablename__ = "machine_maintenances"
+
+    id = Column(Integer, primary_key=True, index=True)
+    machine_id = Column(Integer, ForeignKey("machines.id"), nullable=False)
+    type = Column(String(50), nullable=False) # preventive, corrective
+    description = Column(Text, nullable=False)
+    date = Column(Date, default=datetime.utcnow)
+    cost = Column(Float, nullable=True)
+
+    machine = relationship("Machine", back_populates="maintenances")
+
+# --- Inventory Management Models ---
+
+class InventoryItem(Base):
+    __tablename__ = "inventory_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False)
+    category = Column(String(50), nullable=True)
+    unit = Column(String(20), nullable=False) # kg, un, planchas, etc.
+    current_stock = Column(Float, default=0.0)
+    minimum_stock = Column(Float, default=0.0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    transactions = relationship("InventoryTransaction", back_populates="item", cascade="all, delete-orphan")
+    orders = relationship("InventoryOrder", back_populates="item", cascade="all, delete-orphan")
+
+class InventoryTransaction(Base):
+    __tablename__ = "inventory_transactions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    item_id = Column(Integer, ForeignKey("inventory_items.id"), nullable=False)
+    type = Column(String(20), nullable=False) # in, out
+    quantity = Column(Float, nullable=False)
+    date = Column(Date, default=datetime.utcnow)
+    description = Column(Text, nullable=True)
+
+    item = relationship("InventoryItem", back_populates="transactions")
+
+class InventoryOrder(Base):
+    __tablename__ = "inventory_orders"
+
+    id = Column(Integer, primary_key=True, index=True)
+    item_id = Column(Integer, ForeignKey("inventory_items.id"), nullable=False)
+    quantity = Column(Float, nullable=False)
+    status = Column(String(50), default="planned") # planned, ordered, completed
+    date = Column(Date, default=datetime.utcnow)
+
+    item = relationship("InventoryItem", back_populates="orders")
+

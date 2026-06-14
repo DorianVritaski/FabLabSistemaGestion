@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, Users, Settings, LogOut, Printer } from 'lucide-react';
+import { Home, Users, Settings, LogOut, Printer, Wrench, Package } from 'lucide-react';
 
 const Sidebar = ({ onLogout }) => {
   return (
@@ -30,6 +30,20 @@ const Sidebar = ({ onLogout }) => {
         >
           <Settings size={20} />
           <span>Servicios</span>
+        </NavLink>
+        <NavLink 
+          to="/machines" 
+          className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}
+        >
+          <Wrench size={20} />
+          <span>Máquinas</span>
+        </NavLink>
+        <NavLink 
+          to="/inventory" 
+          className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}
+        >
+          <Package size={20} />
+          <span>Inventario</span>
         </NavLink>
       </nav>
       <div style={{ padding: '1.5rem', borderTop: '1px solid #e9ecef' }}>

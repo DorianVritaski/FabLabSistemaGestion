@@ -5,6 +5,8 @@ import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
 import Users from './pages/Users';
 import Services from './pages/Services';
+import Machines from './pages/Machines';
+import Inventory from './pages/Inventory';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -39,6 +41,8 @@ function App() {
             {/* Rutas */}
             <Route path="/users" element={<Users />} />
             <Route path="/services" element={<Services />} />
+            <Route path="/machines" element={<Machines />} />
+            <Route path="/inventory" element={<Inventory />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
