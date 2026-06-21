@@ -64,6 +64,7 @@ def create_machine_incident(machine_id: int, incident: schemas.MachineIncidentCr
         raise HTTPException(status_code=404, detail="Máquina no encontrada")
 
     new_incident = models.MachineIncident(**incident.dict(), machine_id=machine_id)
+    new_incident.admin_id = current_admin.id
     if new_incident.date is None:
         new_incident.date = date.today()
 
@@ -100,6 +101,7 @@ def create_machine_maintenance(machine_id: int, maintenance: schemas.MachineMain
         raise HTTPException(status_code=404, detail="Máquina no encontrada")
 
     new_maintenance = models.MachineMaintenance(**maintenance.dict(), machine_id=machine_id)
+    new_maintenance.admin_id = current_admin.id
     if new_maintenance.date is None:
         new_maintenance.date = date.today()
 

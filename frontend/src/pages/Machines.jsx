@@ -3,6 +3,7 @@ import api from '../api';
 
 const Machines = () => {
   const [machines, setMachines] = useState([]);
+  const [activeServices, setActiveServices] = useState([]);
   const [loading, setLoading] = useState(true);
   
   // Forms
@@ -15,19 +16,26 @@ const Machines = () => {
   const [actionData, setActionData] = useState({});
   const [reportData, setReportData] = useState(null);
 
-  const fetchMachines = async () => {
+  const fetchMachinesAndServices = async () => {
     try {
-      const res = await api.get('/machines');
-      setMachines(res.data);
+      const [machinesRes, servicesRes] = await Promise.all([
+        api.get('/machines'),
+        api.get('/services/requests')
+      ]);
+      setMachines(machinesRes.data);
+      
+      // Filtrar solo los servicios pendientes o en progreso
+      const active = servicesRes.data.filter(s => s.status === 'pending' || s.status === 'in_progress');
+      setActiveServices(active);
     } catch (error) {
-      console.error("Error fetching machines", error);
+      console.error("Error fetching data", error);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchMachines();
+    fetchMachinesAndServices();
   }, []);
 
   const handleCreateMachine = async (e) => {
@@ -36,7 +44,7 @@ const Machines = () => {
       await api.post('/machines', machineData);
       setShowMachineForm(false);
       setMachineData({ name: '', type: 'Impresora 3D', maintenance_limit_hours: 100 });
-      fetchMachines();
+      fetchMachinesAndServices();
     } catch (error) {
       alert("Error al crear máquina");
     }
@@ -46,7 +54,14 @@ const Machines = () => {
     e.preventDefault();
     try {
       if (showActionForm === 'usage') {
-        await api.post(`/machines/${selectedMachine.id}/usages`, { hours_used: parseFloat(actionData.hours_used), description: actionData.description });
+        const payload = { 
+          hours_used: parseFloat(actionData.hours_used), 
+          description: actionData.description 
+        };
+        if (actionData.service_request_id) {
+          payload.service_request_id = parseInt(actionData.service_request_id);
+        }
+        await api.post(`/machines/${selectedMachine.id}/usages`, payload);
       } else if (showActionForm === 'incident') {
         await api.post(`/machines/${selectedMachine.id}/incidents`, { description: actionData.description });
       } else if (showActionForm === 'maintenance') {
@@ -55,7 +70,7 @@ const Machines = () => {
       
       setShowActionForm(null);
       setActionData({});
-      fetchMachines();
+      fetchMachinesAndServices();
     } catch (error) {
       alert(`Error al registrar ${showActionForm}`);
     }
@@ -123,10 +138,21 @@ const Machines = () => {
           <h3>Registrar {showActionForm === 'usage' ? 'Uso' : showActionForm === 'incident' ? 'Incidencia' : 'Mantenimiento'} para {selectedMachine.name}</h3>
           <form onSubmit={handleActionSubmit} style={{ marginTop: '1rem' }}>
             {showActionForm === 'usage' && (
-              <div className="input-group mb-2">
-                <label className="input-label">Horas de Uso</label>
-                <input type="number" step="0.1" className="input-field" value={actionData.hours_used || ''} onChange={e => setActionData({...actionData, hours_used: e.target.value})} required />
-              </div>
+              <>
+                <div className="input-group mb-2">
+                  <label className="input-label">Vincular a Servicio (Opcional)</label>
+                  <select className="input-field" value={actionData.service_request_id || ''} onChange={e => setActionData({...actionData, service_request_id: e.target.value})}>
+                    <option value="">-- Ninguno --</option>
+                    {activeServices.map(svc => (
+                      <option key={svc.id} value={svc.id}>Servicio #{svc.id} - {svc.service_type.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="input-group mb-2">
+                  <label className="input-label">Horas de Uso</label>
+                  <input type="number" step="0.1" className="input-field" value={actionData.hours_used || ''} onChange={e => setActionData({...actionData, hours_used: e.target.value})} required />
+                </div>
+              </>
             )}
             
             {showActionForm === 'maintenance' && (

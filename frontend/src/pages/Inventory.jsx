@@ -3,6 +3,7 @@ import api from '../api';
 
 const Inventory = () => {
   const [items, setItems] = useState([]);
+  const [activeServices, setActiveServices] = useState([]);
   const [loading, setLoading] = useState(true);
   
   // Forms
@@ -15,19 +16,25 @@ const Inventory = () => {
   const [actionData, setActionData] = useState({});
   const [reportData, setReportData] = useState(null);
 
-  const fetchItems = async () => {
+  const fetchItemsAndServices = async () => {
     try {
-      const res = await api.get('/inventory');
-      setItems(res.data);
+      const [itemsRes, servicesRes] = await Promise.all([
+        api.get('/inventory'),
+        api.get('/services/requests')
+      ]);
+      setItems(itemsRes.data);
+
+      const active = servicesRes.data.filter(s => s.status === 'pending' || s.status === 'in_progress');
+      setActiveServices(active);
     } catch (error) {
-      console.error("Error fetching inventory", error);
+      console.error("Error fetching data", error);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchItems();
+    fetchItemsAndServices();
   }, []);
 
   const handleCreateItem = async (e) => {
@@ -39,7 +46,7 @@ const Inventory = () => {
       });
       setShowItemForm(false);
       setItemData({ name: '', category: 'Material', unit: 'unidades', minimum_stock: 0 });
-      fetchItems();
+      fetchItemsAndServices();
     } catch (error) {
       alert("Error al crear ítem de inventario");
     }
@@ -49,11 +56,15 @@ const Inventory = () => {
     e.preventDefault();
     try {
       if (showActionForm === 'transaction') {
-        await api.post(`/inventory/${selectedItem.id}/transactions`, { 
+        const payload = { 
           type: actionData.type, 
           quantity: parseFloat(actionData.quantity),
           description: actionData.description 
-        });
+        };
+        if (actionData.service_request_id) {
+          payload.service_request_id = parseInt(actionData.service_request_id);
+        }
+        await api.post(`/inventory/${selectedItem.id}/transactions`, payload);
       } else if (showActionForm === 'order') {
         await api.post(`/inventory/${selectedItem.id}/orders`, { 
           quantity: parseFloat(actionData.quantity),
@@ -63,7 +74,7 @@ const Inventory = () => {
       
       setShowActionForm(null);
       setActionData({});
-      fetchItems();
+      fetchItemsAndServices();
     } catch (error) {
       alert(error.response?.data?.detail || `Error al registrar ${showActionForm}`);
     }
@@ -88,7 +99,7 @@ const Inventory = () => {
     try {
       await api.put(`/inventory/${selectedItem.id}/orders/${orderId}/complete`);
       fetchReport(selectedItem); // Refresh report
-      fetchItems(); // Refresh main list
+      fetchItemsAndServices(); // Refresh main list
     } catch (error) {
       alert("Error al completar el pedido");
     }
@@ -144,13 +155,24 @@ const Inventory = () => {
           <h3>{showActionForm === 'transaction' ? 'Movimiento de Inventario' : 'Planificar Pedido de Reposición'} para {selectedItem.name}</h3>
           <form onSubmit={handleActionSubmit} style={{ marginTop: '1rem' }}>
             {showActionForm === 'transaction' && (
-              <div className="input-group mb-2">
-                <label className="input-label">Tipo de Movimiento</label>
-                <select className="input-field" value={actionData.type} onChange={e => setActionData({...actionData, type: e.target.value})}>
-                  <option value="out">Salida (Consumo)</option>
-                  <option value="in">Entrada (Abastecimiento)</option>
-                </select>
-              </div>
+              <>
+                <div className="input-group mb-2">
+                  <label className="input-label">Tipo de Movimiento</label>
+                  <select className="input-field" value={actionData.type} onChange={e => setActionData({...actionData, type: e.target.value})}>
+                    <option value="out">Salida (Consumo)</option>
+                    <option value="in">Entrada (Abastecimiento)</option>
+                  </select>
+                </div>
+                <div className="input-group mb-2">
+                  <label className="input-label">Vincular a Servicio (Opcional)</label>
+                  <select className="input-field" value={actionData.service_request_id || ''} onChange={e => setActionData({...actionData, service_request_id: e.target.value})}>
+                    <option value="">-- Ninguno --</option>
+                    {activeServices.map(svc => (
+                      <option key={svc.id} value={svc.id}>Servicio #{svc.id} - {svc.service_type.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </>
             )}
             
             <div className="input-group mb-2">

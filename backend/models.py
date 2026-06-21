@@ -83,34 +83,40 @@ class MachineUsage(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     machine_id = Column(Integer, ForeignKey("machines.id"), nullable=False)
+    service_request_id = Column(Integer, ForeignKey("service_requests.id"), nullable=True)
     hours_used = Column(Float, nullable=False)
     date = Column(Date, default=datetime.utcnow)
     description = Column(Text, nullable=True)
 
     machine = relationship("Machine", back_populates="usages")
+    service_request = relationship("ServiceRequest")
 
 class MachineIncident(Base):
     __tablename__ = "machine_incidents"
 
     id = Column(Integer, primary_key=True, index=True)
     machine_id = Column(Integer, ForeignKey("machines.id"), nullable=False)
+    admin_id = Column(Integer, ForeignKey("admin_users.id"), nullable=True)
     description = Column(Text, nullable=False)
     date = Column(Date, default=datetime.utcnow)
     status = Column(String(50), default="open") # open, resolved
 
     machine = relationship("Machine", back_populates="incidents")
+    admin = relationship("AdminUser")
 
 class MachineMaintenance(Base):
     __tablename__ = "machine_maintenances"
 
     id = Column(Integer, primary_key=True, index=True)
     machine_id = Column(Integer, ForeignKey("machines.id"), nullable=False)
+    admin_id = Column(Integer, ForeignKey("admin_users.id"), nullable=True)
     type = Column(String(50), nullable=False) # preventive, corrective
     description = Column(Text, nullable=False)
     date = Column(Date, default=datetime.utcnow)
     cost = Column(Float, nullable=True)
 
     machine = relationship("Machine", back_populates="maintenances")
+    admin = relationship("AdminUser")
 
 # --- Inventory Management Models ---
 
@@ -133,12 +139,14 @@ class InventoryTransaction(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     item_id = Column(Integer, ForeignKey("inventory_items.id"), nullable=False)
+    service_request_id = Column(Integer, ForeignKey("service_requests.id"), nullable=True)
     type = Column(String(20), nullable=False) # in, out
     quantity = Column(Float, nullable=False)
     date = Column(Date, default=datetime.utcnow)
     description = Column(Text, nullable=True)
 
     item = relationship("InventoryItem", back_populates="transactions")
+    service_request = relationship("ServiceRequest")
 
 class InventoryOrder(Base):
     __tablename__ = "inventory_orders"

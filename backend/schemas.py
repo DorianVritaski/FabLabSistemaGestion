@@ -102,6 +102,7 @@ class MachineUsageBase(BaseModel):
     hours_used: float
     description: Optional[str] = None
     date: Optional[dt_date] = None
+    service_request_id: Optional[int] = None
 
 class MachineUsageCreate(MachineUsageBase):
     pass
@@ -117,6 +118,7 @@ class MachineIncidentBase(BaseModel):
     description: str
     status: Optional[str] = "open"
     date: Optional[dt_date] = None
+    admin_id: Optional[int] = None
 
 class MachineIncidentCreate(MachineIncidentBase):
     pass
@@ -133,6 +135,7 @@ class MachineMaintenanceBase(BaseModel):
     description: str
     cost: Optional[float] = None
     date: Optional[dt_date] = None
+    admin_id: Optional[int] = None
 
 class MachineMaintenanceCreate(MachineMaintenanceBase):
     pass
@@ -173,6 +176,7 @@ class InventoryTransactionBase(BaseModel):
     quantity: float
     description: Optional[str] = None
     date: Optional[dt_date] = None
+    service_request_id: Optional[int] = None
 
 class InventoryTransactionCreate(InventoryTransactionBase):
     pass
