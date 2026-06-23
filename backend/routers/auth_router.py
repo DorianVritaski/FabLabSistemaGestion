@@ -4,6 +4,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from database import get_db
 import models, schemas, auth
+from typing import List
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -23,8 +24,8 @@ def login_for_access_token(db: Session = Depends(get_db), form_data: OAuth2Passw
     return {"access_token": access_token, "token_type": "bearer"}
 
 @router.post("/register", response_model=schemas.AdminUser)
-def register_admin(user: schemas.AdminUserCreate, db: Session = Depends(get_db)):
-    # Este endpoint en producción debería estar protegido o solo un superadmin debería poder crear otros admins
+def register_admin(user: schemas.AdminUserCreate, db: Session = Depends(get_db), current_admin: models.AdminUser = Depends(auth.RoleChecker(["admin"]))):
+    # Protegido, solo admin puede crear otros admins
     db_user = db.query(models.AdminUser).filter(models.AdminUser.username == user.username).first()
     if db_user:
         raise HTTPException(status_code=400, detail="El usuario ya está registrado")
@@ -44,3 +45,41 @@ def register_admin(user: schemas.AdminUserCreate, db: Session = Depends(get_db))
 @router.get("/me", response_model=schemas.AdminUser)
 def read_users_me(current_user: models.AdminUser = Depends(auth.get_current_user)):
     return current_user
+
+@router.get("/admins", response_model=List[schemas.AdminUser])
+def get_all_admins(db: Session = Depends(get_db), current_admin: models.AdminUser = Depends(auth.RoleChecker(["admin"]))):
+    return db.query(models.AdminUser).order_by(models.AdminUser.id.desc()).all()
+
+@router.put("/admins/{admin_id}", response_model=schemas.AdminUser)
+def update_admin(admin_id: int, user_data: schemas.AdminUserCreate, db: Session = Depends(get_db), current_admin: models.AdminUser = Depends(auth.RoleChecker(["admin"]))):
+    db_user = db.query(models.AdminUser).filter(models.AdminUser.id == admin_id).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="Administrador no encontrado")
+    
+    conflict = db.query(models.AdminUser).filter(models.AdminUser.username == user_data.username, models.AdminUser.id != admin_id).first()
+    if conflict:
+        raise HTTPException(status_code=400, detail="El nombre de usuario ya está en uso")
+        
+    db_user.username = user_data.username
+    db_user.role = user_data.role
+    db_user.is_active = user_data.is_active
+    
+    if user_data.password:
+        db_user.hashed_password = auth.get_password_hash(user_data.password)
+        
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+@router.delete("/admins/{admin_id}")
+def delete_admin(admin_id: int, db: Session = Depends(get_db), current_admin: models.AdminUser = Depends(auth.RoleChecker(["admin"]))):
+    if admin_id == current_admin.id:
+        raise HTTPException(status_code=400, detail="No puedes eliminarte a ti mismo")
+        
+    db_user = db.query(models.AdminUser).filter(models.AdminUser.id == admin_id).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="Administrador no encontrado")
+        
+    db.delete(db_user)
+    db.commit()
+    return {"message": "Administrador eliminado exitosamente"}

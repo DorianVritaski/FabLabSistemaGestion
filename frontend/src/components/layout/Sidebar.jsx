@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, Users, Settings, LogOut, Printer, Wrench, Package } from 'lucide-react';
+import { Home, Users, Settings, LogOut, Printer, Wrench, Package, Shield, BarChart } from 'lucide-react';
 
 const Sidebar = ({ onLogout }) => {
   return (
@@ -44,6 +44,14 @@ const Sidebar = ({ onLogout }) => {
         >
           <Package size={20} />
           <span>Inventario</span>
+        </NavLink>
+        <NavLink to="/admins" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+          <Shield size={20} />
+          <span>Config. Acceso</span>
+        </NavLink>
+        <NavLink to="/reports" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+          <BarChart size={20} />
+          <span>Reportes</span>
         </NavLink>
       </nav>
       <div style={{ padding: '1.5rem', borderTop: '1px solid #e9ecef' }}>

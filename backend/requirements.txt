@@ -13,3 +13,4 @@ prophet
 pandas
 reportlab
 email-validator
+openpyxl
